@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peak</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        /* Custom scrollbar for better aesthetics (optional) */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        .input-label {
+            @apply block text-sm font-medium text-gray-700 mb-1; 
+        }
+        .input-field, .select-field {
+            @apply mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm;
+        }
+        .output-group {
+            @apply bg-white p-4 rounded-lg shadow;
+        }
+        .output-label {
+            @apply text-sm text-gray-500; 
+        }
+        .output-value {
+            @apply text-lg font-semibold text-indigo-600;
+        }
+        .info-text {
+            @apply text-xs text-gray-500 mt-1; 
+        }
+        .chart-container {
+            @apply bg-white p-4 rounded-lg shadow mt-6;
+            min-height: 350px; 
+            height: auto; 
+            max-height: 500px; 
+            position: relative; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+        }
+        .chart-container canvas {
+            max-width: 100%;
+            max-height: 300px; /* Max height for the canvas itself */
+        }
+        /* Class to hide elements */
+        .hidden-input {
+            display: none;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto bg-white p-6 md:p-8 rounded-xl shadow-2xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">PEAK</h1>
+            <p class="text-gray-600 mt-2">Calculate potential savings and visualize price comparisons from battery arbitrage.</p>
+        </header>
+
+        <section class="mb-8 bg-gray-50 p-6 rounded-lg shadow">
+            <h2 class="text-xl font-semibold text-gray-700 mb-6">Company Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                    <label for="companyName" class="input-label">Company Name:</label>
+                    <input type="text" id="companyName" class="input-field">
+                </div>
+                <div>
+                    <label for="contactPerson" class="input-label">Contact Person:</label>
+                    <input type="text" id="contactPerson" class="input-field">
+                </div>
+                <div>
+                    <label for="email" class="input-label">Email:</label>
+                    <input type="email" id="email" class="input-field">
+                </div>
+                <div>
+                    <label for="phoneNumber" class="input-label">Phone Number:</label>
+                    <input type="tel" id="phoneNumber" class="input-field">
+                </div>
+            </div>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="bg-gray-50 p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Energy Inputs</h2>
+
+                <div>
+                    <label for="totalPeakKwhServed" class="input-label">Total Peak kWh's Served per year (kWh/yr):</label>
+                    <input type="number" id="totalPeakKwhServed" class="input-field" value="4160000">
+                    <p class="info-text">Your total energy consumption during peak hours annually.</p>
+                </div>
+
+                <div class="mt-4">
+                    <label for="daytimeTariff" class="input-label">Daytime (Standard) Tariff (R/kWh):</label>
+                    <input type="number" id="daytimeTariff" step="0.01" class="input-field" value="1.20">
+                    <p class="info-text">Cost per kWh during daytime (grid).</p>
+                </div>
+
+                <div class="mt-4">
+                    <label for="nighttimeTariff" class="input-label">Nighttime (Off-Peak) Tariff (R/kWh):</label>
+                    <input type="number" id="nighttimeTariff" step="0.01" class="input-field" value="1.14">
+                    <p class="info-text">Cost per kWh during nighttime (grid).</p>
+                </div>
+
+                <div class="mt-4">
+                    <label for="peakCostEskom" class="input-label">Current Peak Cost (Grid) (R/kWh):</label>
+                    <input type="number" id="peakCostEskom" step="0.01" class="input-field" value="4.15">
+                    <p class="info-text">Your current average cost per kWh from ESKOM or Municipality during peak times.</p>
+                </div>
+
+                <div class="mt-4">
+                    <label for="isSolarPlanned" class="input-label">Is Solar Power Planned?</label>
+                    <select id="isSolarPlanned" class="select-field">
+                        <option value="no" selected>No</option>
+                        <option value="yes">Yes</option>
+                    </select>
+                    <p class="info-text">Select if you plan to use solar power for standard daytime usage.</p>
+                </div>
+                
+                <div id="solarTariffInputContainer" class="mt-4 hidden-input">
+                    <label for="solarStandardTariff" class="input-label">Solar Standard Tariff (R/kWh):</label>
+                    <input type="number" id="solarStandardTariff" step="0.01" class="input-field" value="0.80">
+                    <p class="info-text">Estimated cost per kWh when using solar during standard hours.</p>
+                </div>
+
+            </div>
+            <div class="bg-gray-50 p-6 rounded-lg shadow flex flex-col justify-center items-center">
+                 <img src="https://placehold.co/300x200/E0E7FF/4F46E5?text=Energy+Analysis&font=Inter" alt="Energy Analysis Placeholder" class="rounded-lg mb-4 max-w-xs w-full" onerror="this.onerror=null;this.src='https://placehold.co/300x200/E0E7FF/4F46E5?text=Image+Not+Found&font=Inter';">
+                <button id="calculateButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">
+                    Calculate Savings & Update Charts
+                </button>
+                 <p class="info-text mt-3 text-center">Click to update calculations and charts based on your inputs.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center">Calculation Results</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"> 
+                <div class="output-group">
+                    <p class="output-label">Battery Size (kWh):</p>
+                    <p class="output-value" id="batterySize">0 kWh</p>
+                </div>
+                <div class="output-group">
+                    <p class="output-label">Capex (R):</p>
+                    <p class="output-value" id="capex">R0.00</p>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-semibold text-gray-700 mb-4 mt-8 text-center">Key Financial Outcomes</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div class="output-group border-l-4 border-red-500">
+                    <p class="output-label">Cost to Serve (R/kWh):</p>
+                    <p class="output-value text-red-600" id="costToServe">R0.00</p>
+                </div>
+                <div class="output-group border-l-4 border-green-500">
+                    <p class="output-label">1st Year Saving (R):</p>
+                    <p class="output-value text-green-600" id="firstYearSaving">R0.00</p>
+                </div>
+                <div class="output-group border-l-4 border-blue-500">
+                    <p class="output-label">Cumulative Savings (R over term):</p>
+                    <p class="output-value text-blue-600" id="cumulativeSavings">R0.00</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="mt-10">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-6 text-center">Price Comparison by Time of Day (R/kWh)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="chart-container">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">Before: Grid Prices</h3>
+                    <canvas id="beforePricesChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3 text-center">After: System & Solar Prices</h3>
+                    <canvas id="afterPricesChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <footer class="mt-12 text-center text-sm text-gray-500">
+            <p>&copy; <span id="currentYear"></span> Energy Savings Calculator. All calculations are estimates.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Fixed Values
+        const FIXED_VALUES = {
+            hourlySplitServedPerDay: 2.5,
+            totalPeakHoursFixed: 1300, 
+            costPerMwh: 4500000.00,
+            costOfCapitalRate: 0.1450,
+            termDurationYears: 10,
+            insuranceAnnualRate: 0.0065,
+            oAndMAnnualRate: 0.01,
+        };
+
+        // Define time slots for a 24-hour cycle
+        const TIME_SLOTS = [
+            { id: 'off_peak_night', type: 'Off-Peak',     timeRange: '20:00 - 06:00', hours: 10 },
+            { id: 'peak_morning',   type: 'Morning Peak', timeRange: '06:00 - 08:00', hours: 2  },
+            { id: 'standard_day',   type: 'Standard',     timeRange: '08:00 - 17:00', hours: 9  },
+            { id: 'peak_evening',   type: 'Evening Peak', timeRange: '17:00 - 20:00', hours: 3  }
+        ];
+
+        // Define color schemes for the charts
+        const COLOR_SCHEMES = {
+            grid: { 
+                'Morning Peak': { background: 'rgba(255, 99, 132, 0.7)', border: 'rgba(255, 99, 132, 1)' }, 
+                'Evening Peak': { background: 'rgba(255, 99, 132, 0.7)', border: 'rgba(255, 99, 132, 1)' }, 
+                'Standard':     { background: 'rgba(255, 206, 86, 0.7)', border: 'rgba(255, 206, 86, 1)' }, 
+                'Off-Peak':     { background: 'rgba(75, 192, 192, 0.7)', border: 'rgba(75, 192, 192, 1)' }  
+            },
+            systemSolar: { 
+                'Morning Peak': { background: 'rgba(255, 140, 0, 0.7)', border: 'rgba(255, 140, 0, 1)' },    
+                'Evening Peak': { background: 'rgba(255, 140, 0, 0.7)', border: 'rgba(255, 140, 0, 1)' },    
+                'Standard':     { background: 'rgba(54, 162, 235, 0.7)', border: 'rgba(54, 162, 235, 1)' },  
+                'Off-Peak':     { background: 'rgba(75, 192, 192, 0.7)', border: 'rgba(75, 192, 192, 1)' }  
+            }
+        };
+
+        // Chart instances
+        let beforePricesChartInstance = null;
+        let afterPricesChartInstance = null;
+
+        // DOM Elements
+        const isSolarPlannedSelector = document.getElementById('isSolarPlanned');
+        const solarTariffInputContainer = document.getElementById('solarTariffInputContainer');
+        const solarStandardTariffInput = document.getElementById('solarStandardTariff');
+        const daytimeTariffInput = document.getElementById('daytimeTariff');
+        const nighttimeTariffInput = document.getElementById('nighttimeTariff'); 
+
+
+        // Helper function to format currency
+        function formatCurrency(value) {
+            if (typeof value !== 'number' || !isFinite(value)) value = 0;
+            return new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR' }).format(value);
+        }
+
+        // Helper function to format rates
+        function formatRate(value, includeSymbol = true) {
+            const numValue = Number(value);
+            if (isNaN(numValue) || !isFinite(numValue)) return includeSymbol ? 'R0.00' : '0.00';
+            return (includeSymbol ? 'R' : '') + numValue.toFixed(2);
+        }
+        
+        // PMT function
+        function calculatePMT(principal, annualInterestRate, numberOfYears) {
+            if (principal === 0) return 0;
+            if (annualInterestRate === 0) return numberOfYears > 0 ? principal / numberOfYears : principal;
+            const r = annualInterestRate;
+            const n = numberOfYears;
+            return principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+        }
+
+        // Function to toggle visibility of solar tariff input
+        function toggleSolarTariffInput() {
+            if (isSolarPlannedSelector.value === 'yes') {
+                solarTariffInputContainer.classList.remove('hidden-input');
+            } else {
+                solarTariffInputContainer.classList.add('hidden-input');
+            }
+        }
+
+        // Generic function to create or update a doughnut chart
+        function createOrUpdateDoughnutChart(chartInstance, canvasId, chartDatasetTitle, slotPrices, schemeType) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            
+            const labels = [];
+            const dataPoints = [];
+            const backgroundColors = [];
+            const borderColors = [];
+
+            const currentScheme = COLOR_SCHEMES[schemeType]; 
+
+            TIME_SLOTS.forEach(slot => {
+                const price = slotPrices[slot.type]; 
+                const colorSet = currentScheme[slot.type]; 
+
+                labels.push(`${slot.type}: ${formatRate(price)}/kWh`); 
+                dataPoints.push(slot.hours);
+                backgroundColors.push(colorSet.background);
+                borderColors.push(colorSet.border);
+            });
+
+            const data = {
+                labels: labels,
+                datasets: [{
+                    label: chartDatasetTitle, 
+                    data: dataPoints,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1
+                }]
+            };
+
+            const config = {
+                type: 'doughnut',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom', 
+                            labels: {
+                                boxWidth: 20,
+                                padding: 15,
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label; 
+                                }
+                            }
+                        },
+                        title: { 
+                            display: false, 
+                            text: chartDatasetTitle, 
+                            padding: { top: 10, bottom: 10 }
+                        }
+                    },
+                    cutout: '50%', 
+                }
+            };
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            return new Chart(ctx, config); 
+        }
+
+
+        // Main calculation and display function
+        function calculateAndDisplaySavings() {
+            // Get User Inputs for Company Information
+            const companyName = document.getElementById('companyName').value;
+            const contactPerson = document.getElementById('contactPerson').value;
+            const email = document.getElementById('email').value;
+            const phoneNumber = document.getElementById('phoneNumber').value;
+            // const leadGenerator = document.getElementById('leadGenerator').value; // REMOVED
+
+            // Get User Inputs for Energy Calculation
+            const totalPeakKwhServedPerYear = parseFloat(document.getElementById('totalPeakKwhServed').value) || 0;
+            const daytimeTariff = parseFloat(daytimeTariffInput.value) || 0;     
+            const nighttimeTariff = parseFloat(nighttimeTariffInput.value) || 0; 
+            const peakCostEskom = parseFloat(document.getElementById('peakCostEskom').value) || 0;     
+            
+            const solarPlanned = isSolarPlannedSelector.value === 'yes';
+            let actualSolarStandardTariff;
+
+            if (solarPlanned) {
+                actualSolarStandardTariff = parseFloat(solarStandardTariffInput.value) || 0;
+            } else {
+                actualSolarStandardTariff = daytimeTariff;
+            }
+
+            // --- Financial Calculations ---
+            let availablePowerCapacityKwhHr = 0;
+            if (FIXED_VALUES.totalPeakHoursFixed > 0) {
+                availablePowerCapacityKwhHr = totalPeakKwhServedPerYear / FIXED_VALUES.totalPeakHoursFixed;
+            }
+            const calculatedBatterySizeKwh = availablePowerCapacityKwhHr * FIXED_VALUES.hourlySplitServedPerDay;
+            document.getElementById('batterySize').textContent = calculatedBatterySizeKwh.toLocaleString(undefined, {maximumFractionDigits: 0}) + ' kWh';
+
+            const capex = (FIXED_VALUES.costPerMwh * calculatedBatterySizeKwh) / 1000;
+            document.getElementById('capex').textContent = formatCurrency(capex);
+
+            const annualFinanceCost = calculatePMT(capex, FIXED_VALUES.costOfCapitalRate, FIXED_VALUES.termDurationYears);
+            const insuranceAnnual = FIXED_VALUES.insuranceAnnualRate * capex;
+            const oAndMAnnual = FIXED_VALUES.oAndMAnnualRate * capex;
+            const energyDaytimeKwh = totalPeakKwhServedPerYear / 2; 
+            const energyNighttimeKwh = totalPeakKwhServedPerYear / 2; 
+            const purchasedEnergyCost = (energyDaytimeKwh * daytimeTariff) + (energyNighttimeKwh * nighttimeTariff);
+
+            const totalAnnualSystemCosts = annualFinanceCost + insuranceAnnual + oAndMAnnual;
+            const totalAnnualOperationalCosts = totalAnnualSystemCosts + purchasedEnergyCost;
+            
+            let costToServe = 0;
+            if (totalPeakKwhServedPerYear > 0) {
+                costToServe = totalAnnualOperationalCosts / totalPeakKwhServedPerYear;
+            }
+            document.getElementById('costToServe').textContent = formatRate(costToServe);
+
+            const firstYearSaving = (peakCostEskom - costToServe) * totalPeakKwhServedPerYear;
+            document.getElementById('firstYearSaving').textContent = formatCurrency(firstYearSaving);
+
+            const cumulativeSavings = firstYearSaving * FIXED_VALUES.termDurationYears;
+            document.getElementById('cumulativeSavings').textContent = formatCurrency(cumulativeSavings);
+
+            // --- Prepare data for charts ---
+            const beforePrices = {
+                'Morning Peak': peakCostEskom, 
+                'Evening Peak': peakCostEskom,
+                'Standard': daytimeTariff, 
+                'Off-Peak': nighttimeTariff 
+            };
+
+            const afterPrices = {
+                'Morning Peak': costToServe, 
+                'Evening Peak': costToServe,          
+                'Standard': actualSolarStandardTariff, 
+                'Off-Peak': nighttimeTariff 
+            };
+
+            // --- Update Doughnut Charts ---
+            beforePricesChartInstance = createOrUpdateDoughnutChart(
+                beforePricesChartInstance,
+                'beforePricesChart',
+                'Grid Prices (R/kWh)', 
+                beforePrices,
+                'grid' 
+            );
+
+            afterPricesChartInstance = createOrUpdateDoughnutChart(
+                afterPricesChartInstance,
+                'afterPricesChart',
+                'System & Solar Prices (R/kWh)', 
+                afterPrices,
+                'systemSolar' 
+            );
+        }
+
+        // Event Listeners
+        document.getElementById('calculateButton').addEventListener('click', calculateAndDisplaySavings);
+        isSolarPlannedSelector.addEventListener('change', function() {
+            toggleSolarTariffInput();
+            // calculateAndDisplaySavings(); 
+        });
+
+
+        // Set current year
+        document.getElementById('currentYear').textContent = new Date().getFullYear();
+        
+        // Initial setup on page load
+        window.onload = function() {
+            toggleSolarTariffInput(); 
+            calculateAndDisplaySavings(); 
+        };
+    </script>
+
+</body>
+</html>
+
